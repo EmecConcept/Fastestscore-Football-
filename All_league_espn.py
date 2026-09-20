@@ -6,6 +6,7 @@ import threading
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from curl_cffi import requests
+from flask import Flask
 
 #========================================
 # POST BRANDING BUILDER (MODERN PRO)
@@ -545,7 +546,21 @@ class MultiLeagueBot:
                 print(f"⚠️ Master Loop Error: {e}")
             time.sleep(self.poll_interval)
 
-if __name__ == "__main__":
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "FastestScore Bot is alive and running!", 200
+
+def run_bot_in_background():
     bot = MultiLeagueBot()
     bot.run()
 
+if __name__ == "__main__":
+    # 1. Start your ESPN Bot loop inside a background thread
+    threading.Thread(target=run_bot_in_background, daemon=True).start()
+    
+    # 2. Start the web server on the port Render assigns
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
