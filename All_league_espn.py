@@ -53,7 +53,7 @@ class PostBuilder:
     @classmethod
     def kickoff(cls, comp_name, home, away):
         return (
-            f"🟢 KICK-OFF!\n"
+            f"⛳ KICK-OFF!\n"
             f"🏆 {comp_name}\n\n"
             f"{home} 0-0 {away}\n\n"
             f"The match is underway! ⏱️\n\n"
@@ -64,7 +64,7 @@ class PostBuilder:
     def goal(cls, comp_name, home, away, h_sc, a_sc, goal_info, assist):
         assist_line = f"\n🎯 Assist: {assist}" if assist else ""
         return (
-            f"🚨 GOAL! GOAL GOAL\n"
+            f"🚨 GOAL! GOAL! GOAL!\n"
             f"🏆 {comp_name}\n\n"
             f"{home} {h_sc}-{a_sc} {away}\n\n"
             f"⚽ {goal_info}"
