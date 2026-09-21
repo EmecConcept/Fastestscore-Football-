@@ -567,7 +567,7 @@ class MultiLeagueBot:
 
         # 2. Initial cache sync
           futures = [self.executor.submit(self.scan_league, name, slug, True) for name, slug in self.leagues.items()]
-        for future in as_completed(futures):
+          for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
