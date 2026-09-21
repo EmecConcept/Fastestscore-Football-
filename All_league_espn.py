@@ -122,6 +122,19 @@ class MultiLeagueBot:
             "MLS": "usa.1",
             "U.S. Open Cup": "usa.open",
             "Leagues Cup": "concacaf.leagues.cup",
+            "FIFA World Cup": "fifa.world",
+            "UEFA Euro": "uefa.euro",
+            "Copa America": "conmebol.america",
+            "Africa Cup of Nations": "caf.nations",
+            "Eredivisie": "ned.1",
+            "Primeira Liga": "por.1",
+            "Scottish Premiership": "sco.1",
+            "Copa Libertadores": "conmebol.libertadores",
+            "Brasileirão Series A": "bra.1",
+            "UEFA Nations League": "uefa.nations",
+            "CONCACAF Nations League": "concacaf.nations",
+            "International Friendlies": "fifa.friendly",
+            "Club Friendlies": "club.friendly",
         }
         
         self.VIP_TEAMS = {
