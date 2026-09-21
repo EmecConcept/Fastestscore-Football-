@@ -73,6 +73,15 @@ class PostBuilder:
         )
 
     @classmethod
+    def halftime(cls, comp_name, home, away, h_sc, a_sc):
+        return (
+            f"⛳ HALF TIME\n"
+            f"🏆 {comp_name}\n\n"
+            f"{home} {h_sc}-{a_sc} {away}\n\n"
+            f"{cls.tag(comp_name)}"
+        )
+
+    @classmethod
     def fulltime(cls, comp_name, home, away, h_sc, a_sc):
         return (
             f"⛳ FULL TIME\n"
@@ -441,6 +450,7 @@ class MultiLeagueBot:
         for e in events:
             m_id = str(e.get("id"))
             state = e.get("status", {}).get("type", {}).get("state")
+            status_name = e.get("status", {}).get("type", {}).get("name")
 
             comp = e.get("competitions", [])[0] if e.get("competitions") else {}
             home, away, h_sc, a_sc = "", "", 0, 0
@@ -480,6 +490,15 @@ class MultiLeagueBot:
                 post_id = self.post_fb(msg)
                 if post_id:
                     self._mark_posted(f"{m_id}_KO")
+        # half time 
+
+            if status_name == "STATUS_HALFTIME" and not self._is_posted(f"{m_id}_HT"):
+                msg = PostBuilder.halftime(comp_name, home, away, h_sc, a_sc)
+                post_id = self.post_fb(msg)
+                if post_id:
+                    self._mark_posted(f"{m_id}_HT")
+                    print(f"\n⛳ [HALF TIME - {comp_name}] {home} {h_sc}-{a_sc} {away}")
+
 
             # 3. VAR Correction
             if h_sc < ch_sc or a_sc < ca_sc:
