@@ -269,6 +269,7 @@ class MultiLeagueBot:
                 type_text = ev.get("type", {}).get("text", "").lower()
                 desc_text = ev.get("text", "") 
                 is_penalty = "penalty" in type_text or "penalty" in desc_text.lower()
+                is_own_goal = "own goal" in type_text or "own goal" in desc_text.lower()
 
                 clk = ev.get("clock", {}).get("displayValue", "").replace("'", "")
                 scr, ast = "Unknown Player", None
@@ -288,13 +289,15 @@ class MultiLeagueBot:
 
                 if scr != "Unknown Player" and scr is not None:
                     pen_tag = " (pen.)" if is_penalty else ""
-                    return ev.get("id", f"{clk}_{scr}"), f"{scr}{pen_tag} ({clk}')", ast
+                    og_tag = " (OG)" if is_own_goal else ""
+                    return ev.get("id", f"{clk}_{scr}"), f"{scr}{pen_tag}{og_tag} ({clk}')", ast
 
             except Exception:
                 pass
             time.sleep(5)
 
         return None, None, None
+
 
     #--------------------------------
     # The Background Assist Hunter
@@ -308,49 +311,51 @@ class MultiLeagueBot:
 
         for row in pending:
             post_id, m_id, exp_goals, slug, comp_name, home, away, h_sc, a_sc, attempts = row
-            
+
             if attempts >= 8:
                 self.remove_pending_edit(post_id)
                 continue
-                
+
             try:
                 url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/summary?event={m_id}&_t={int(time.time()*1000)}"
                 events = self.session.get(url, timeout=6).json().get("keyEvents", [])
                 goal_events = [ev for ev in events if "goal" in ev.get("type", {}).get("text", "").lower()]
-                
+
                 if len(goal_events) >= exp_goals:
                     ev = goal_events[-1]
                     desc_text = ev.get("text", "")
                     scr, ast = "Unknown Player", None
-                    
+
                     for p in ev.get("participants", []):
                         role, name = p.get("type", ""), p.get("athlete", {}).get("displayName")
                         if role == "scorer" or (not role and scr == "Unknown Player"):
                             scr = name
                         elif role == "assist":
                             ast = name
-                            
+
                     if not ast and "ssisted by " in desc_text:
                         try:
                             ast = desc_text.split("ssisted by ")[1].split(".")[0].split(",")[0].strip()
                         except:
                             pass
-                            
+
                     if ast:
                         clk = ev.get("clock", {}).get("displayValue", "").replace("'", "")
                         type_text = ev.get("type", {}).get("text", "").lower()
                         is_penalty = "penalty" in type_text or "penalty" in desc_text.lower()
+                        is_own_goal = "own goal" in type_text or "own goal" in desc_text.lower()
                         pen_tag = " (pen.)" if is_penalty else ""
-                        g_info = f"{scr}{pen_tag} ({clk}')"
-                        
+                        og_tag = " (OG)" if is_own_goal else ""
+                        g_info = f"{scr}{pen_tag}{og_tag} ({clk}')"
+
                         new_msg = PostBuilder.goal(comp_name, home, away, h_sc, a_sc, g_info, ast)
                         if self.edit_fb(post_id, new_msg):
                             self.remove_pending_edit(post_id)
                             continue
-                            
+
             except Exception:
                 pass
-                
+
             with self.db_lock:
                 self.cursor.execute("UPDATE pending_edits SET attempts = attempts + 1 WHERE post_id=?", (post_id,))
                 self.db.commit()
