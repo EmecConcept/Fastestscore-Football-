@@ -99,11 +99,11 @@ class MultiLeagueBot:
     def __init__(self):
         self.token = os.environ.get("FB_TOKEN")
         self.fb_url = "https://graph.facebook.com/v19.0/me/feed"
-        self.poll_interval = 12
+       # self.poll_interval = 12
 
         self.session = requests.Session(impersonate="chrome")
         self.db_lock = threading.RLock()
-        self.executor = ThreadPoolExecutor(max_workers=7)
+        self.executor = ThreadPoolExecutor(max_workers=20)
 
         self.leagues = {
             "Champions League": "uefa.champions",
@@ -254,7 +254,7 @@ class MultiLeagueBot:
     # ESPN API: Insta-Goal Finder
     #--------------------------------
     def get_goal(self, match_id, expected_goals, slug):
-        for attempt in range(1, 8):
+        for attempt in range(1, 3):
             try:
                 url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/summary?event={match_id}&_t={int(time.time()*1000)}"
                 events = self.session.get(url, timeout=6).json().get("keyEvents", [])
@@ -359,6 +359,64 @@ class MultiLeagueBot:
             with self.db_lock:
                 self.cursor.execute("UPDATE pending_edits SET attempts = attempts + 1 WHERE post_id=?", (post_id,))
                 self.db.commit()
+
+    #--------------------------------
+    # Searching for goal name 
+    #--------------------------------
+
+    def _hunt_missing_goal(self, m_id, expected_goals, slug, comp_name, home, away, h_sc, a_sc):
+        print(f"🕵️‍♂️ [BACKGROUND HUNTER] Hunting for missing goalscorer: {comp_name} ({home} vs {away})")
+        
+        # Try 10 times, waiting 30 seconds between each try (5 minutes total)
+        for attempt in range(1, 6):
+            time.sleep(30)
+            try:
+                url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{slug}/summary?event={m_id}&_t={int(time.time()*1000)}"
+                events = self.session.get(url, timeout=6).json().get("keyEvents", [])
+                goal_events = [ev for ev in events if "goal" in ev.get("type", {}).get("text", "").lower()]
+
+                if len(goal_events) >= expected_goals:
+                    ev = goal_events[-1]
+                    scr = "Unknown Player"
+                    ast = None
+
+                    # Find scorer and assist
+                    for p in ev.get("participants", []):
+                        role = p.get("type", "")
+                        name = p.get("athlete", {}).get("displayName")
+                        if role == "scorer" or (not role and scr == "Unknown Player"):
+                            scr = name
+                        elif role == "assist":
+                            ast = name
+
+                    # If a real name finally appeared
+                    if scr and scr != "Unknown Player":
+                        clk = ev.get("clock", {}).get("displayValue", "").replace("'", "")
+                        type_text = ev.get("type", {}).get("text", "").lower()
+                        desc_text = ev.get("text", "")
+                        
+                        is_penalty = "penalty" in type_text or "penalty" in desc_text.lower()
+                        is_own_goal = "own goal" in type_text or "own goal" in desc_text.lower()
+                        pen_tag = " (pen.)" if is_penalty else ""
+                        og_tag = " (OG)" if is_own_goal else ""
+                        
+                        g_info = f"{scr}{pen_tag}{og_tag} ({clk}')"
+                        e_id = ev.get("id", f"{clk}_{scr}")
+                        g_key = f"{m_id}_{e_id}_{h_sc}_{a_sc}"
+
+                        # Post it to Facebook!
+                        if not self._is_posted(g_key):
+                            msg = PostBuilder.goal(comp_name, home, away, h_sc, a_sc, g_info, ast)
+                            post_id = self.post_fb(msg)
+                            if post_id:
+                                self._mark_posted(g_key)
+                                print(f"🎯 [HUNTER SUCCESS] Found and posted delayed goal for {home} vs {away}!")
+                                return # Exit the hunter successfully
+            except Exception:
+                pass
+                
+        print(f"👻 [HUNTER GAVE UP] No name found after 5 minutes for {home} vs {away}.")
+
 
     #--------------------------------
     # Morning Engine: Daily Fixtures
@@ -520,27 +578,34 @@ class MultiLeagueBot:
 
             # 4. Live Goals (INSTA-POST)
             if h_sc > ch_sc or a_sc > ca_sc:
-                print(f"\n🚨 [GOAL - {comp_name}] {home} {h_sc} - {a_sc} {away}")
+                print(f"\n🚨 [GOAL DETECTED - {comp_name}] {home} {h_sc} - {a_sc} {away}")
 
                 expected_total_goals = h_sc + a_sc
+                # This now only takes 10 seconds
                 e_id, g_info, ast = self.get_goal(m_id, expected_total_goals, slug)
-                
+
                 if not g_info:
-                    continue
+                    print(f"⚠️ No name in 10s. Updating memory & launching Background Hunter.")
+                    # Launch the background hunter so the main bot can move on immediately
+                    threading.Thread(
+                        target=self._hunt_missing_goal, 
+                        args=(m_id, expected_total_goals, slug, comp_name, home, away, h_sc, a_sc),
+                        daemon=True
+                    ).start()
+                else:
+                    g_key = f"{m_id}_{e_id}_{h_sc}_{a_sc}"
 
-                g_key = f"{m_id}_{e_id}_{h_sc}_{a_sc}"
+                    if not self._is_posted(g_key):
+                        msg = PostBuilder.goal(comp_name, home, away, h_sc, a_sc, g_info, ast)
+                        print(f"\n{'-'*45}\n{msg}\n{'-'*45}")
 
-                if not self._is_posted(g_key):
-                    msg = PostBuilder.goal(comp_name, home, away, h_sc, a_sc, g_info, ast)
-                    print(f"\n{'-'*45}\n{msg}\n{'-'*45}")
-                    
-                    post_id = self.post_fb(msg)
-                    if post_id:
-                        self._mark_posted(g_key)
-                        
-                        # NINJA EDIT TRACKER: If no assist was found, add to pending edits
-                        if not ast:
-                            self.add_pending_edit(post_id, m_id, expected_total_goals, slug, comp_name, home, away, h_sc, a_sc)
+                        post_id = self.post_fb(msg)
+                        if post_id:
+                            self._mark_posted(g_key)
+
+                            if not ast:
+                                self.add_pending_edit(post_id, m_id, expected_total_goals, slug, comp_name, home, away, h_sc, a_sc)
+
 
             # 5. Full Time
             if state == "post" and c_state != "post" and not self._is_posted(f"{m_id}_FT"):
@@ -595,7 +660,8 @@ class MultiLeagueBot:
                 
             except Exception as e:
                 print(f"⚠️ Master Loop Error: {e}")
-            time.sleep(self.poll_interval)
+            wait_time = random.randint(5, 12)
+            time.sleep(wait_time)
 
 
 app = Flask(__name__)
