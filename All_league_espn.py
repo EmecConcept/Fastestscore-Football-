@@ -461,10 +461,17 @@ class MultiLeagueBot:
             home, away, h_sc, a_sc = "", "", 0, 0
 
             for t in comp.get("competitors", []):
+                raw_score = t.get("score")
+                try:
+                    safe_score = int(raw_score) if raw_score is not None else 0
+                except (ValueError, TypeError):
+                    safe_score = 0
+
                 if t.get("homeAway") == "home":
-                    home, h_sc = t.get("team", {}).get("displayName", "Home"), int(t.get("score", 0))
+                    home, h_sc = t.get("team", {}).get("displayName", "Home"), safe_score
                 else:
-                    away, a_sc = t.get("team", {}).get("displayName", "Away"), int(t.get("score", 0))
+                    away, a_sc = t.get("team", {}).get("displayName", "Away"), safe_score
+
 
             # VIP TEAM FILTER
             if comp_name in self.VIP_TEAMS:
@@ -559,9 +566,13 @@ class MultiLeagueBot:
         self.check_daily_fixtures()
 
         # 2. Initial cache sync
-        futures = [self.executor.submit(self.scan_league, name, slug, True) for name, slug in self.leagues.items()]
+          futures = [self.executor.submit(self.scan_league, name, slug, True) for name, slug in self.leagues.items()]
         for future in as_completed(futures):
-            future.result()
+            try:
+                future.result()
+            except Exception as e:
+                print(f"⚠️ Initial Sync Error caught: {e}")
+
 
         print(" ✅ Sync complete! Radar active.\n")
 
@@ -574,7 +585,11 @@ class MultiLeagueBot:
                 # Check all matches for score changes
                 futures = [self.executor.submit(self.scan_league, name, slug, False) for name, slug in self.leagues.items()]
                 for future in as_completed(futures):
-                    future.result()
+                    try:
+                        future.result()
+                    except Exception:
+                        pass
+
                     
                 # Check pending edits for delayed assist data
                 self.process_pending_edits()
