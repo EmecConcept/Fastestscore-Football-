@@ -566,13 +566,12 @@ class MultiLeagueBot:
         self.check_daily_fixtures()
 
         # 2. Initial cache sync
-          futures = [self.executor.submit(self.scan_league, name, slug, True) for name, slug in self.leagues.items()]
-          for future in as_completed(futures):
+        futures = [self.executor.submit(self.scan_league, name, slug, True) for name, slug in self.leagues.items()]
+        for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
                 print(f"⚠️ Initial Sync Error caught: {e}")
-
 
         print(" ✅ Sync complete! Radar active.\n")
 
