@@ -499,7 +499,7 @@ class MultiLeagueBot:
                 print(f"✅ Daily Fixture Schedule posted successfully! (ID: {post_id})\n")
         else:
             print("ℹ️ No tracked matches scheduled for today.")
-
+            self._mark_posted(fixture_tag)
     #--------------------------------
     # Main Engine: Process Single League
     #--------------------------------
