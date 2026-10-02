@@ -53,6 +53,6 @@ python All_league_espn.py
 I am a Backend Developer and Automation Engineer specializing in Python, multi-threaded pipelines, and live data scraping engines. If you need a custom automation tool, a notification bot, or scalable backend infrastructure, let's talk.
 
 * **Email:** e08132m@gmail.com
-* **WhatsApp:** [Click here to chat](https://wa.me/2349042741758
+* **WhatsApp:** [Click here to chat](https://wa.me/2349042741758)
 * **LinkedIn:** https://www.linkedin.com/in/chukwunonso-enwerem-7364b1365
 
