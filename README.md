@@ -48,3 +48,11 @@ python All_league_espn.py
 * **Thread-Safe Database Operations:** Because multiple threads evaluate match states simultaneously, all SQLite read/write operations are wrapped in `threading.RLock()` to prevent database locking errors and corruption.
 * **Cloud-Ready Web Server Integration:** Cloud providers require web services to bind to a designated `$PORT` within 60 seconds, or the instance is killed. This script safely isolates the infinite `while True` scraping loop in a daemon thread (`run_bot_in_background`), allowing the Flask `app.run` to bind successfully to `0.0.0.0:PORT` and keep the server alive.
 * **Fault Tolerance:** API timeouts, JSON parsing errors, and network drops are handled gracefully inside isolated `try/except` blocks within the thread pool, ensuring that a crash in one league's tracking doesn't bring down the entire application.
+
+## 🤝 Let's Connect / Hire Me
+I am a Backend Developer and Automation Engineer specializing in Python, multi-threaded pipelines, and live data scraping engines. If you need a custom automation tool, a notification bot, or scalable backend infrastructure, let's talk.
+
+* **Email:** e08132m@gmail.com
+* **WhatsApp:** [Click here to chat](https://wa.me/2349042741758
+* **LinkedIn:** https://www.linkedin.com/in/chukwunonso-enwerem-7364b1365
+
